@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { FeaturesSection } from "./components/FeaturesSection";
 
 function App() {
   const [status, setStatus] = useState("loading");
@@ -860,6 +861,9 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Features Section */}
+      {!analysisResult && <FeaturesSection />}
 
       {/* Footer */}
       <footer style={styles.footer}>
