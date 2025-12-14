@@ -114,6 +114,8 @@ Based on this, do the following:
 2. Describe the architecture in simple words.
 3. Give 3 practical interview-ready explanations.
 4. Mention 2 potential improvements.
+5. Summarize all this in less than 200 words.
+6. Make the user interview-ready to explain this project to a senior engineer.
 
 Keep the answer concise.
 `;

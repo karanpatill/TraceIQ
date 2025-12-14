@@ -1,0 +1,407 @@
+/* Body Styling */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f9f9f9;
+    color: #333;
+    padding: 20px;
+}
+.premium-card {
+    background-color: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin: 30px auto;
+    max-width: 1000px;
+    transition: all 0.3s ease-in-out;
+}
+
+.premium-card img {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    object-fit: cover;
+    margin-bottom: 20px;
+}
+
+.premium-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.premium-subtitle {
+    font-size: 1.2rem;
+    color: #7f8c8d;
+    margin-bottom: 20px;
+}
+
+.premium-description {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #34495e;
+    margin-bottom: 15px;
+}
+
+.premium-price,
+.premium-location {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #2c3e50;
+    margin-top: 10px;
+}
+.premium-card button {
+    border: none;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+
+/* Form Styling */
+form {
+    background-color: #ffffff;
+    padding: 20px 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 100%;
+    margin: auto;
+}
+
+.listing a {
+    text-decoration: none !important;
+    color: black;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+}
+
+/* Form Inputs and Textareas */
+form input[type="text"],
+form input[type="number"],
+form input[type="url"],
+form textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+/* Focused Inputs */
+form input:focus,
+form textarea:focus {
+    border-color: black;
+    outline: none;
+}
+
+/* Submit Button */
+form button {
+    background-color: black;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+}
+
+form button:hover {
+    background-color: #222;
+}
+
+/* Listings Grid */
+#listings-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 2fr));
+    width: 100%;
+    margin-left: 80px;
+}
+
+/* Listing Cards */
+/* General container styling */
+.row {
+    margin-top: 2rem;
+}
+
+/* Card styling */
+.listing.card {
+    border: none;
+    border-radius: 12px;
+    background-color: #ffffff;
+    transition: transform 0.2s ease-in-out, box-shadow 0.3s ease;
+    overflow: hidden;
+}
+
+.listing.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Image styling */
+.listing.card img {
+    object-fit: cover;
+    height: 200px;
+    width: 100%;
+    border-radius: 8px;
+}
+
+/* Title styling */
+.listing.card h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.75rem;
+}
+
+/* Paragraph and text styling */
+.listing.card p {
+    margin: 0.25rem 0;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+/* Price styling */
+.listing.card p strong {
+    color: #1a1a1a;
+}
+
+.taxes {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+/* Responsive spacing */
+@media (max-width: 768px) {
+    .listing.card {
+        margin-bottom: 1.5rem;
+    }
+}
+
+
+
+
+
+    .filter-bar {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    .filter-bar button {
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+    .filter-bar button {
+     border: #222 solid 1px;
+        background-color: white;
+        color: black;
+        border-radius: 5px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s;
+    }
+    .filter-bar button:hover {
+        background-color: #222;
+        color: white;
+    }
+
+
+.listing:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Image Styling */
+.listing img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    clip-path: ellipse(100% 80% at 50% 20%);
+    transition: transform 0.3s ease;
+}
+
+.listing:hover img {
+    transform: scale(1.05);
+}
+
+/* Title & Text */
+.listing h4 {
+    font-size: 20px;
+    color: black;
+    margin: 15px;
+}
+
+.listing p {
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 15px 10px 15px;
+}
+
+.listing p strong {
+    color: black;
+}
+
+/* Buttons */
+.listing form button {
+    background-color: black;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s;
+    margin: 10px;
+}
+
+.listing form button:hover {
+    background-color: #222;
+    transform: scale(1.1);
+}
+
+/* Footer */
+.footer {
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+    padding: 2rem 1rem;
+    text-align: center;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.footer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.footer-brand .brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.5rem;
+    color: #f0f0f0;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.footer-social a {
+    color: #f0f0f0;
+    margin: 0 0.5rem;
+    font-size: 1.3rem;
+    transition: color 0.3s ease;
+}
+
+.footer-social a:hover {
+    color: #00bfa6;
+}
+
+.footer-copy p {
+    font-size: 0.9rem;
+    color: #bbb;
+}
+
+
+/* Footer Content */
+.f-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Footer Links */
+.info-links a {
+    margin: 0 10px;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+.info-links a:hover {
+    color: #777;
+    text-decoration: underline;
+}
+
+/* Social Media Icons */
+.fa-instagram, .fa-github, .fa-twitter {
+    font-size: 2rem;
+    color: white;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.fa-instagram:hover, 
+.fa-github:hover, 
+.fa-twitter:hover {
+    transform: scale(1.2);
+    filter: brightness(1.2);
+}
+
+/* Review Box */
+.review-box {
+    margin-top: 100px;
+}
+
+.review-box h2 {
+    font-family: 'Times New Roman', Times, serif;
+    text-align: center;
+}
+
+.range {
+    accent-color: black;
+}
+
+.review-heading {
+    text-align: center;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .show-review > ul {
+        flex-basis: 100%;
+        max-width: 100%;
+    }
+}
+
+
+.search-form {
+    flex-grow: 1;
+    max-width: 200px; /* Adjust as needed */
+  }
+  
+  .search-input {
+    flex: 3;
+    min-width: 0;
+  }
+  
+  .search-btn {
+    white-space: nowrap;
+    padding: 1px 7px;
+    font-size: 0.875rem;
+  }
+  .searchform{
+    height: 50px;
+    width: 70px;
+    display: flex;
+  }
+  gmp-map {
+    width: 100%;
+    height: 400px;
+    display: block;
+  }
+  .map-container {
+    border: 2px solid #e0e0e0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  

@@ -1,8 +1,12 @@
+require("dotenv").config();
 const OpenAI = require("openai");
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error("OPENAI_API_KEY is missing");
+}
 
-const client = new OpenAI({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-module.exports = client;
+module.exports = openai;
