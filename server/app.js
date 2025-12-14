@@ -291,10 +291,20 @@ app.use((err, req, res, next) => {
 // =======================
 
 mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("Mongo error:", err));
+  .connect(process.env.MONGO_URI, {
+    tls: true,
+    tlsAllowInvalidCertificates: false,
+    serverSelectionTimeoutMS: 10000,
+  })
+  .then(() => {
+    console.log("MongoDB connected");
+  })
+  .catch((err) => {
+    console.error("MongoDB connection failed ❌");
+    console.error(err);
+    process.exit(1);
+  });
 
 app.listen(port, () => {
-  console.log(`http://localhost:${port}`);
+  console.log(`Server running on port ${port}`);
 });
