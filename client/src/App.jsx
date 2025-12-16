@@ -86,55 +86,56 @@ function App() {
   };
 
   // file upload + analysis handler
-  const handleUpload = async () => {
-    if (!file) {
-      alert("Please select a file first");
-      return;
-    }
+ const handleUpload = async () => {
+  if (!file) {
+    alert("Please select a file first");
+    return;
+  }
 
-    if (!token) {
-      alert("Please sign in with Google first");
-      return;
-    }
+  if (!token) {
+    alert("Please sign in with Google first");
+    return;
+  }
 
-    try {
-      setLoadingUpload(true);
-      resetAnalysisState();
+  try {
+    setLoadingUpload(true);
+    resetAnalysisState();
 
-      const formData = new FormData();
-      formData.append("project", file);
+    const formData = new FormData();
+    formData.append("project", file);
 
-      const res = await axios.post("http://localhost:3000/upload", formData, {
+    const res = await axios.post(
+      "http://localhost:3000/upload",
+      formData,
+      {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
         },
-      });
-
-      console.log("Upload + analysis response:", res.data);
-      alert("File uploaded & analyzed successfully");
-
-      if (res.data.scanResult) {
-        setAnalysisResult(res.data.scanResult);
-      } else {
-        console.warn("No scanResult field in response");
       }
+    );
 
-      if (res.data.projectDoc && res.data.projectDoc._id) {
-        setProjectId(res.data.projectDoc._id);
-      } else {
-        console.warn("No projectDoc._id in response");
-      }
-    } catch (err) {
-      console.error("Upload failed:", err);
-      alert(
-        err.response?.data?.message ||
-          "File upload failed (maybe too large or invalid zip)"
-      );
-    } finally {
-      setLoadingUpload(false);
+    console.log("Upload + analysis response:", res.data);
+
+    // ✅ FIXED: new backend response
+    setAnalysisResult(res.data.analysis);
+    setProjectId(res.data.projectId);
+
+    // optional: agar upload ke saath AI text aa raha ho
+    if (res.data.explanation) {
+      setAiText(res.data.explanation);
     }
-  };
+
+  } catch (err) {
+    console.error("Upload failed:", err);
+    alert(
+      err.response?.data?.message ||
+        "File upload failed"
+    );
+  } finally {
+    setLoadingUpload(false);
+  }
+};
+
 
   const handleExplainWithAI = async () => {
     if (!token) {
@@ -171,6 +172,74 @@ function App() {
       setAiLoading(false);
     }
   };
+
+  const renderAIText = (text) => {
+  if (!text) return null;
+
+  const lines = text.split("\n");
+
+  return lines.map((line, i) => {
+    // Section headings like **Reality Check**
+    if (line.startsWith("**") && line.endsWith("**")) {
+      return (
+        <div
+          key={i}
+          style={{
+            marginTop: "28px",
+            marginBottom: "12px",
+            fontSize: "13px",
+            fontWeight: "700",
+            letterSpacing: "1.2px",
+            textTransform: "uppercase",
+            color: "#0ea5a5",
+            borderLeft: "4px solid #0ea5a5",
+            paddingLeft: "12px",
+          }}
+        >
+          {line.replaceAll("*", "")}
+        </div>
+      );
+    }
+
+    // Bullet points (- something)
+    if (line.trim().startsWith("-")) {
+      return (
+        <div
+          key={i}
+          style={{
+            marginLeft: "18px",
+            marginBottom: "8px",
+            fontSize: "14px",
+            lineHeight: "1.6",
+            color: "#d4d4d8",
+          }}
+        >
+          • {line.replace("-", "").trim()}
+        </div>
+      );
+    }
+
+    // Normal paragraph
+    if (line.trim() !== "") {
+      return (
+        <p
+          key={i}
+          style={{
+            fontSize: "14px",
+            lineHeight: "1.8",
+            color: "#d4d4d8",
+            marginBottom: "12px",
+            maxWidth: "720px",
+          }}
+        >
+          {line}
+        </p>
+      );
+    }
+
+    return null;
+  });
+};
 
   const styles = {
     page: {
@@ -768,33 +837,6 @@ function App() {
               </details>
             </div>
 
-            <button
-              onClick={handleExplainWithAI}
-              disabled={aiLoading}
-              style={{
-                ...styles.aiButton,
-                background: aiLoading 
-                  ? "rgba(14, 165, 165, 0.05)"
-                  : "rgba(14, 165, 165, 0.08)",
-                color: aiLoading ? "#718a90" : "#0ea5a5",
-                cursor: aiLoading ? "default" : "pointer",
-              }}
-              onMouseEnter={(e) => {
-                if (!aiLoading) {
-                  e.currentTarget.style.borderColor = "rgba(14, 165, 165, 0.5)";
-                  e.currentTarget.style.background = "rgba(14, 165, 165, 0.12)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!aiLoading) {
-                  e.currentTarget.style.borderColor = "rgba(14, 165, 165, 0.3)";
-                  e.currentTarget.style.background = "rgba(14, 165, 165, 0.08)";
-                }
-              }}
-            >
-              {aiLoading ? "Getting AI insights..." : "Explain with AI"}
-            </button>
-
             {aiText && (
               <div
                 style={{
@@ -846,14 +888,8 @@ function App() {
                     maxHeight: "400px",
                     overflow: "auto"
                   }}>
-                    <p style={{
-                      ...styles.aiText,
-                      margin: 0,
-                      fontSize: "14px",
-                      lineHeight: "1.8"
-                    }}>
-                      {aiText}
-                    </p>
+                    <p style={styles.aiText}>{aiText}</p>
+
                   </div>
                 </div>
               </div>
