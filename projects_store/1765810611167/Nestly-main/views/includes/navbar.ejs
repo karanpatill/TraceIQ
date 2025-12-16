@@ -1,0 +1,45 @@
+<nav class="navbar navbar-expand-md navbar-light bg-white sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="/listings">
+        <i class="fa-regular fa-compass me-2"></i>
+      </a>
+  
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
+        aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+  
+      <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+        <!-- Left-side nav links -->
+        <div class="navbar-nav me-auto">
+          <a class="nav-item nav-link" href="/listings/new">
+            <i class="fa-solid fa-plus me-2"></i> Add New Listing
+          </a>
+  
+        </div>
+  
+        <!-- Search form: compact and responsive -->
+        <form class="d-flex align-items-center mx-auto" role="search" name="search" action="" method="GET" style="max-width: 400px; width: 100%;">
+          <input class="form-control me-2 flex-grow-1" type="search" name="q" placeholder="Search listings..." aria-label="Search">
+          <button class="btn btn-outline-dark btn-sm" type="submit">Search</button>
+        </form>
+  
+        <!-- Right-side auth links -->
+        <div class="navbar-nav">
+          <% if (!currentUser) { %>
+            <a class="nav-item nav-link" href="/login">
+              <i class="fa-solid fa-right-to-bracket me-2"></i> Login
+            </a>
+            <a class="nav-item nav-link" href="/signup">
+              <i class="fa-solid fa-user-plus me-2"></i> Sign Up
+            </a>
+          <% } else { %>
+            <a class="nav-item nav-link" href="/logout">
+              <i class="fa-solid fa-right-from-bracket me-2"></i> Logout
+            </a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </nav>
+  
