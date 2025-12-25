@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { FeaturesSection } from "./components/FeaturesSection";
 
+
+const API = import.meta.env.VITE_BACKEND_URL;
+
 function App() {
   const [status, setStatus] = useState("loading");
   const [file, setFile] = useState(null);
@@ -30,7 +33,7 @@ function App() {
         "379071280284-tt3ekucit1ikbr1jcs2u11v8jgljvk35.apps.googleusercontent.com",
       callback: async (response) => {
         try {
-          const res = await axios.post("http://localhost:3000/auth/google", {
+          const res = await axios.post(`${API}/auth/google`, {
             credential: response.credential,
           });
 
@@ -57,7 +60,7 @@ function App() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/health");
+        const res = await axios.get(`${API}/health`);
         setStatus(res.data.status);
       } catch (err) {
         console.error("Health check failed:", err);
@@ -105,7 +108,7 @@ function App() {
     formData.append("project", file);
 
     const res = await axios.post(
-      "http://localhost:3000/upload",
+      `${API}/upload`,
       formData,
       {
         headers: {
@@ -152,7 +155,7 @@ function App() {
       setAiText("");
 
       const res = await axios.post(
-        "http://localhost:3000/ai/explain",
+        `${API}/ai/explain`,
         { projectId },
         {
           headers: {
