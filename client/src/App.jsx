@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API = "YOUR_BACKEND_URL"; // Replace with your actual backend URL
+const API = import.meta.env.VITE_BACKEND_URL; // Replace with your actual backend URL
 
 function App() {
   const [status, setStatus] = useState("loading");
