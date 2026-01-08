@@ -1,66 +1,133 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { FeaturesSection } from "./components/FeaturesSection";
 
-
-const API = import.meta.env.VITE_BACKEND_URL;
+const API = "YOUR_BACKEND_URL"; // Replace with your actual backend URL
 
 function App() {
   const [status, setStatus] = useState("loading");
   const [file, setFile] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loadingUpload, setLoadingUpload] = useState(false);
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-  const [token, setToken] = useState(() => localStorage.getItem("token") || null);
-
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [projectId, setProjectId] = useState(null);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
 
-  // Google Login init
+  // Initialize user from localStorage on mount
   useEffect(() => {
-  let attempts = 0;
+    const savedUser = localStorage.getItem("user");
+    const savedToken = localStorage.getItem("token");
+    if (savedUser) setUser(JSON.parse(savedUser));
+    if (savedToken) setToken(savedToken);
+  }, []);
 
-  const waitForGoogle = () => {
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.initialize({
-        client_id: "379071280284-tt3ekucit1ikbr1jcs2u11v8jgljvk35.apps.googleusercontent.com",
-        callback: async (response) => {
-          try {
-            const res = await axios.post(`${API}/auth/google`, {
-              credential: response.credential,
-            });
+  // Load Google Sign-In script
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGoogleLoaded(true);
+    script.onerror = () => console.error("Failed to load Google Sign-In script");
+    document.body.appendChild(script);
 
-            localStorage.setItem("token", res.data.token);
-            localStorage.setItem("user", JSON.stringify(res.data.user));
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
 
-            window.google.accounts.id.cancel();
-            setToken(res.data.token);
-            setUser(res.data.user);
-          } catch {
-            alert("Google login failed");
-          }
+  // Initialize Google Sign-In after script loads
+  useEffect(() => {
+    if (!googleLoaded || !document.getElementById('google-signin-button')) return;
+
+    let attempts = 0;
+    const maxAttempts = 50;
+
+    const initializeGoogle = () => {
+      if (window.google?.accounts?.id) {
+        try {
+          // Initialize the Google Sign-In client
+          window.google.accounts.id.initialize({
+            client_id: "379071280284-tt3ekucit1ikbr1jcs2u11v8jgljvk35.apps.googleusercontent.com",
+            callback: handleGoogleResponse,
+            auto_select: false,
+            cancel_on_tap_outside: false,
+          });
+
+          // Render the Google Sign-In button
+          window.google.accounts.id.renderButton(
+            document.getElementById('google-signin-button'),
+            {
+              theme: 'filled_blue',
+              size: 'large',
+              text: 'signin_with',
+              shape: 'rectangular',
+              width: 250
+            }
+          );
+
+          console.log("Google Sign-In initialized successfully");
+        } catch (error) {
+          console.error("Error initializing Google Sign-In:", error);
+        }
+        return;
+      }
+
+      if (attempts++ < maxAttempts) {
+        setTimeout(initializeGoogle, 100);
+      } else {
+        console.error("Google Sign-In library failed to load after maximum attempts");
+      }
+    };
+
+    initializeGoogle();
+  }, [googleLoaded]);
+
+  const handleGoogleResponse = async (response) => {
+    try {
+      const res = await fetch(`${API}/auth/google`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          credential: response.credential,
+        }),
       });
-      return;
-    }
 
-    if (attempts++ < 50) setTimeout(waitForGoogle, 100);
-    else console.error("Google never loaded");
+      if (!res.ok) {
+        throw new Error("Google login failed");
+      }
+
+      const data = await res.json();
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.cancel();
+      }
+
+      setToken(data.token);
+      setUser(data.user);
+    } catch (error) {
+      console.error("Google login error:", error);
+      alert("Google login failed. Please try again.");
+    }
   };
 
-  waitForGoogle();
-}, []);
+  // Remove the old handleGoogleSignIn function - now using Google's native button
 
-  // backend health check
+  // Backend health check
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await axios.get(`${API}/health`);
-        setStatus(res.data.status);
+        const res = await fetch(`${API}/health`);
+        const data = await res.json();
+        setStatus(data.status);
       } catch (err) {
         console.error("Health check failed:", err);
         setStatus("error");
@@ -83,61 +150,54 @@ function App() {
     setUser(null);
     setFile(null);
     resetAnalysisState();
-    setRepos([]);
-    setSelectedRepo("");
   };
 
-  // file upload + analysis handler
- const handleUpload = async () => {
-  if (!file) {
-    alert("Please select a file first");
-    return;
-  }
+  const handleUpload = async () => {
+    if (!file) {
+      alert("Please select a file first");
+      return;
+    }
 
-  if (!token) {
-    alert("Please sign in with Google first");
-    return;
-  }
+    if (!token) {
+      alert("Please sign in with Google first");
+      return;
+    }
 
-  try {
-    setLoadingUpload(true);
-    resetAnalysisState();
+    try {
+      setLoadingUpload(true);
+      resetAnalysisState();
 
-    const formData = new FormData();
-    formData.append("project", file);
+      const formData = new FormData();
+      formData.append("project", file);
 
-    const res = await axios.post(
-      `${API}/upload`,
-      formData,
-      {
+      const res = await fetch(`${API}/upload`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Upload failed");
       }
-    );
 
-    console.log("Upload + analysis response:", res.data);
+      const data = await res.json();
+      console.log("Upload + analysis response:", data);
 
-    // ✅ FIXED: new backend response
-    setAnalysisResult(res.data.analysis);
-    setProjectId(res.data.projectId);
+      setAnalysisResult(data.analysis);
+      setProjectId(data.projectId);
 
-    // optional: agar upload ke saath AI text aa raha ho
-    if (res.data.explanation) {
-      setAiText(res.data.explanation);
+      if (data.explanation) {
+        setAiText(data.explanation);
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("File upload failed");
+    } finally {
+      setLoadingUpload(false);
     }
-
-  } catch (err) {
-    console.error("Upload failed:", err);
-    alert(
-      err.response?.data?.message ||
-        "File upload failed"
-    );
-  } finally {
-    setLoadingUpload(false);
-  }
-};
-
+  };
 
   const handleExplainWithAI = async () => {
     if (!token) {
@@ -153,95 +213,28 @@ function App() {
       setAiLoading(true);
       setAiText("");
 
-      const res = await axios.post(
-        `${API}/ai/explain`,
-        { projectId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await fetch(`${API}/ai/explain`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ projectId }),
+      });
 
-      setAiText(res.data.explanation || "No explanation received");
+      if (!res.ok) {
+        throw new Error("AI explanation failed");
+      }
+
+      const data = await res.json();
+      setAiText(data.explanation || "No explanation received");
     } catch (err) {
       console.error("AI explain failed:", err);
-      alert(
-        err.response?.data?.message ||
-          "AI explanation failed (possibly timeout)"
-      );
+      alert("AI explanation failed (possibly timeout)");
     } finally {
       setAiLoading(false);
     }
   };
-
-  const renderAIText = (text) => {
-  if (!text) return null;
-
-  const lines = text.split("\n");
-
-  return lines.map((line, i) => {
-    // Section headings like **Reality Check**
-    if (line.startsWith("**") && line.endsWith("**")) {
-      return (
-        <div
-          key={i}
-          style={{
-            marginTop: "28px",
-            marginBottom: "12px",
-            fontSize: "13px",
-            fontWeight: "700",
-            letterSpacing: "1.2px",
-            textTransform: "uppercase",
-            color: "#0ea5a5",
-            borderLeft: "4px solid #0ea5a5",
-            paddingLeft: "12px",
-          }}
-        >
-          {line.replaceAll("*", "")}
-        </div>
-      );
-    }
-
-    // Bullet points (- something)
-    if (line.trim().startsWith("-")) {
-      return (
-        <div
-          key={i}
-          style={{
-            marginLeft: "18px",
-            marginBottom: "8px",
-            fontSize: "14px",
-            lineHeight: "1.6",
-            color: "#d4d4d8",
-          }}
-        >
-          • {line.replace("-", "").trim()}
-        </div>
-      );
-    }
-
-    // Normal paragraph
-    if (line.trim() !== "") {
-      return (
-        <p
-          key={i}
-          style={{
-            fontSize: "14px",
-            lineHeight: "1.8",
-            color: "#d4d4d8",
-            marginBottom: "12px",
-            maxWidth: "720px",
-          }}
-        >
-          {line}
-        </p>
-      );
-    }
-
-    return null;
-  });
-};
 
   const styles = {
     page: {
@@ -332,6 +325,25 @@ function App() {
       fontWeight: "500",
       transition: "all 0.3s",
     },
+    googleSignInBtn: {
+      padding: "10px 20px",
+      backgroundColor: "#0ea5a5",
+      color: "#fff",
+      border: "none",
+      borderRadius: "8px",
+      fontSize: "14px",
+      fontWeight: "600",
+      cursor: "pointer",
+      transition: "all 0.3s",
+      boxShadow: "0 4px 12px rgba(14, 165, 165, 0.2)",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+    },
+    googleSignInBtnDisabled: {
+      opacity: 0.5,
+      cursor: "not-allowed",
+    },
     main: {
       maxWidth: "1100px",
       margin: "0 auto",
@@ -353,12 +365,6 @@ function App() {
       fontSize: "12px",
       color: "#71d5d5",
       fontWeight: "500",
-    },
-    statusIcon: {
-      width: "8px",
-      height: "8px",
-      borderRadius: "50%",
-      animation: "pulse 2s infinite",
     },
     card: {
       background: "rgba(15, 15, 20, 0.8)",
@@ -394,12 +400,6 @@ function App() {
     uploadAreaActive: {
       borderColor: "rgba(14, 165, 165, 0.5)",
       background: "rgba(14, 165, 165, 0.08)",
-    },
-    uploadIcon: {
-      fontSize: "48px",
-      marginBottom: "20px",
-      transition: "all 0.3s",
-      opacity: 0.7,
     },
     uploadText: {
       fontSize: "18px",
@@ -467,31 +467,12 @@ function App() {
       maxHeight: "280px",
       lineHeight: "1.6",
     },
-    aiContainer: {
-      marginTop: "28px",
-      padding: "28px",
-      borderRadius: "12px",
-      background: "rgba(14, 165, 165, 0.04)",
-      border: "1px solid rgba(14, 165, 165, 0.15)",
-    },
     aiText: {
       fontSize: "15px",
       lineHeight: "1.8",
       color: "#d4d4d8",
       whiteSpace: "pre-wrap",
       margin: 0,
-    },
-    aiButton: {
-      marginTop: "24px",
-      padding: "12px 24px",
-      borderRadius: "8px",
-      border: "1px solid rgba(14, 165, 165, 0.3)",
-      background: "rgba(14, 165, 165, 0.08)",
-      color: "#0ea5a5",
-      fontSize: "14px",
-      fontWeight: "600",
-      cursor: "pointer",
-      transition: "all 0.3s",
     },
     footer: {
       textAlign: "center",
@@ -501,9 +482,35 @@ function App() {
       flexShrink: 0,
       background: "rgba(5, 5, 7, 0.6)",
     },
-    footerText: {
-      fontSize: "13px",
-      color: "#71838b",
+    feature: {
+      background: "rgba(15, 15, 20, 0.6)",
+      border: "1px solid rgba(14, 165, 165, 0.1)",
+      borderRadius: "12px",
+      padding: "32px",
+      textAlign: "center",
+    },
+    featureIcon: {
+      width: "48px",
+      height: "48px",
+      background: "rgba(14, 165, 165, 0.1)",
+      borderRadius: "8px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      margin: "0 auto 16px",
+      fontSize: "24px",
+      color: "#0ea5a5",
+    },
+    featureTitle: {
+      fontSize: "18px",
+      fontWeight: "600",
+      color: "#e4e4e7",
+      margin: "0 0 8px 0",
+    },
+    featureDesc: {
+      fontSize: "14px",
+      color: "#a1a1a6",
+      lineHeight: "1.6",
       margin: 0,
     },
   };
@@ -543,7 +550,7 @@ function App() {
           border-radius: 4px;
         }
       `}</style>
-      
+
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
@@ -574,31 +581,29 @@ function App() {
             </button>
           </div>
         ) : (
-          <button
-            onClick={() => window.google.accounts.id.prompt()}
+          <div 
+            id="google-signin-button"
             style={{
-              padding: "10px 20px",
-              backgroundColor: "#0ea5a5",
-              color: "#fff",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition: "all 0.3s",
-              boxShadow: "0 4px 12px rgba(14, 165, 165, 0.2)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = "0 8px 20px rgba(14, 165, 165, 0.3)";
-              e.currentTarget.style.transform = "translateY(-2px)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = "0 4px 12px rgba(14, 165, 165, 0.2)";
-              e.currentTarget.style.transform = "translateY(0)";
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '40px',
+              minWidth: '200px'
             }}
           >
-            Sign in with Google
-          </button>
+            {!googleLoaded && (
+              <div style={{
+                padding: "10px 20px",
+                backgroundColor: "rgba(14, 165, 165, 0.2)",
+                color: "#0ea5a5",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: "600",
+              }}>
+                Loading...
+              </div>
+            )}
+          </div>
         )}
       </header>
 
@@ -612,11 +617,7 @@ function App() {
               height: "8px",
               borderRadius: "50%",
               backgroundColor:
-                status === "ok"
-                  ? "#10b981"
-                  : status === "error"
-                  ? "#ef4444"
-                  : "#f59e0b",
+                status === "ok" ? "#10b981" : status === "error" ? "#ef4444" : "#f59e0b",
               animation: "pulse 2s infinite",
             }}
           />
@@ -633,7 +634,8 @@ function App() {
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>Analyze your project</h2>
           <p style={styles.cardSubtitle}>
-            Upload a ZIP file to get AI-powered insights about your codebase architecture, dependencies, and potential improvements.
+            Upload a ZIP file to get AI-powered insights about your codebase architecture,
+            dependencies, and potential improvements.
           </p>
 
           <div
@@ -652,9 +654,7 @@ function App() {
           <label>
             <div
               style={
-                file
-                  ? { ...styles.uploadArea, ...styles.uploadAreaActive }
-                  : styles.uploadArea
+                file ? { ...styles.uploadArea, ...styles.uploadAreaActive } : styles.uploadArea
               }
               onDragOver={(e) => {
                 e.preventDefault();
@@ -699,7 +699,7 @@ function App() {
                   fontWeight: "600",
                 }}
               >
-                {file ? "+" : "^"}
+                {file ? "✓" : "↑"}
               </div>
 
               {file ? (
@@ -747,7 +747,9 @@ function App() {
           >
             {loadingUpload ? (
               <>
-                <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>↻</span>
+                <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>
+                  ↻
+                </span>
                 <span>Analyzing project...</span>
               </>
             ) : (
@@ -787,54 +789,72 @@ function App() {
               >
                 Project structure
               </div>
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "16px",
-                marginBottom: "16px"
-              }}>
-                {analysisResult && Object.entries(analysisResult).slice(0, 6).map(([key, value]) => (
-                  <div key={key} style={{
-                    background: "rgba(14, 165, 165, 0.05)",
-                    border: "1px solid rgba(14, 165, 165, 0.15)",
-                    borderRadius: "8px",
-                    padding: "16px",
-                  }}>
-                    <div style={{
-                      fontSize: "11px",
-                      textTransform: "uppercase",
-                      letterSpacing: "1px",
-                      color: "#0ea5a5",
-                      fontWeight: "600",
-                      marginBottom: "8px"
-                    }}>
-                      {key}
-                    </div>
-                    <div style={{
-                      fontSize: "13px",
-                      color: "#d4d4d8",
-                      wordBreak: "break-word"
-                    }}>
-                      {typeof value === 'object' ? JSON.stringify(value).substring(0, 100) : String(value).substring(0, 100)}
-                    </div>
-                  </div>
-                ))}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "16px",
+                  marginBottom: "16px",
+                }}
+              >
+                {analysisResult &&
+                  Object.entries(analysisResult)
+                    .slice(0, 6)
+                    .map(([key, value]) => (
+                      <div
+                        key={key}
+                        style={{
+                          background: "rgba(14, 165, 165, 0.05)",
+                          border: "1px solid rgba(14, 165, 165, 0.15)",
+                          borderRadius: "8px",
+                          padding: "16px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "11px",
+                            textTransform: "uppercase",
+                            letterSpacing: "1px",
+                            color: "#0ea5a5",
+                            fontWeight: "600",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          {key}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "13px",
+                            color: "#d4d4d8",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {typeof value === "object"
+                            ? JSON.stringify(value).substring(0, 100)
+                            : String(value).substring(0, 100)}
+                        </div>
+                      </div>
+                    ))}
               </div>
-              <details style={{
-                cursor: "pointer",
-                marginTop: "12px"
-              }}>
-                <summary style={{
-                  fontSize: "12px",
-                  color: "#0ea5a5",
-                  fontWeight: "600",
-                  padding: "8px",
-                  userSelect: "none"
-                }}>View full JSON</summary>
+              <details
+                style={{
+                  cursor: "pointer",
+                  marginTop: "12px",
+                }}
+              >
+                <summary
+                  style={{
+                    fontSize: "12px",
+                    color: "#0ea5a5",
+                    fontWeight: "600",
+                    padding: "8px",
+                    userSelect: "none",
+                  }}
+                >
+                  View full JSON
+                </summary>
                 <div style={styles.codeBlock}>
-                  <pre style={{ margin: 0 }}>
-                    {JSON.stringify(analysisResult, null, 2)}
-                  </pre>
+                  <pre style={{ margin: 0 }}>{JSON.stringify(analysisResult, null, 2)}</pre>
                 </div>
               </details>
             </div>
@@ -858,40 +878,52 @@ function App() {
                 >
                   AI Insights
                 </div>
-                <div style={{
-                  background: "linear-gradient(135deg, rgba(14, 165, 165, 0.08) 0%, rgba(14, 165, 165, 0.03) 100%)",
-                  border: "1px solid rgba(14, 165, 165, 0.2)",
-                  borderRadius: "12px",
-                  overflow: "hidden"
-                }}>
-                  <div style={{
-                    background: "rgba(14, 165, 165, 0.1)",
-                    padding: "16px 20px",
-                    borderBottom: "1px solid rgba(14, 165, 165, 0.15)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px"
-                  }}>
-                    <div style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      background: "#0ea5a5",
-                      animation: "pulse 2s infinite"
-                    }} />
-                    <span style={{
-                      fontSize: "13px",
-                      fontWeight: "600",
-                      color: "#e4e4e7"
-                    }}>Intelligent Analysis</span>
+                <div
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(14, 165, 165, 0.08) 0%, rgba(14, 165, 165, 0.03) 100%)",
+                    border: "1px solid rgba(14, 165, 165, 0.2)",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "rgba(14, 165, 165, 0.1)",
+                      padding: "16px 20px",
+                      borderBottom: "1px solid rgba(14, 165, 165, 0.15)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "8px",
+                        height: "8px",
+                        borderRadius: "50%",
+                        background: "#0ea5a5",
+                        animation: "pulse 2s infinite",
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        color: "#e4e4e7",
+                      }}
+                    >
+                      Intelligent Analysis
+                    </span>
                   </div>
-                  <div style={{
-                    padding: "24px",
-                    maxHeight: "400px",
-                    overflow: "auto"
-                  }}>
+                  <div
+                    style={{
+                      padding: "24px",
+                      maxHeight: "400px",
+                      overflow: "auto",
+                    }}
+                  >
                     <p style={styles.aiText}>{aiText}</p>
-
                   </div>
                 </div>
               </div>
@@ -901,42 +933,162 @@ function App() {
       </main>
 
       {/* Features Section */}
-      {!analysisResult && <FeaturesSection />}
+      {!analysisResult && (
+        <div style={{ maxWidth: "1100px", margin: "0 auto 60px", padding: "0 48px" }}>
+          <div
+            style={{
+              textAlign: "center",
+              marginBottom: "48px",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: "32px",
+                fontWeight: "700",
+                color: "#e4e4e7",
+                margin: "0 0 12px 0",
+              }}
+            >
+              Powerful Code Analysis
+            </h2>
+            <p
+              style={{
+                fontSize: "16px",
+                color: "#a1a1a6",
+                margin: 0,
+              }}
+            >
+              Get comprehensive insights into your codebase
+            </p>
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "24px",
+            }}
+          >
+            <div style={styles.feature}>
+              <div style={styles.featureIcon}>🔍</div>
+              <h3 style={styles.featureTitle}>Deep Analysis</h3>
+              <p style={styles.featureDesc}>
+                Comprehensive code structure analysis with dependency mapping
+              </p>
+            </div>
+            <div style={styles.feature}>
+              <div style={styles.featureIcon}>🤖</div>
+              <h3 style={styles.featureTitle}>AI-Powered</h3>
+              <p style={styles.featureDesc}>
+                Get intelligent recommendations and improvement suggestions
+              </p>
+            </div>
+            <div style={styles.feature}>
+              <div style={styles.featureIcon}>⚡</div>
+              <h3 style={styles.featureTitle}>Fast Results</h3>
+              <p style={styles.featureDesc}>
+                Quick analysis with detailed insights in seconds
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer style={styles.footer}>
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "40px", marginBottom: "40px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              gap: "40px",
+              marginBottom: "40px",
+            }}
+          >
             <div>
-              <h3 style={{ margin: "0 0 12px 0", color: "#e4e4e7", fontSize: "14px", fontWeight: "600" }}>Getting Started</h3>
+              <h3
+                style={{
+                  margin: "0 0 12px 0",
+                  color: "#e4e4e7",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                Getting Started
+              </h3>
               <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                <li style={{ marginBottom: "8px" }}><span style={{ color: "#0ea5a5" }}>1.</span> <span style={{ color: "#a1a1a6" }}>Sign in with Google</span></li>
-                <li style={{ marginBottom: "8px" }}><span style={{ color: "#0ea5a5" }}>2.</span> <span style={{ color: "#a1a1a6" }}>Upload your project as ZIP</span></li>
-                <li style={{ marginBottom: "8px" }}><span style={{ color: "#0ea5a5" }}>3.</span> <span style={{ color: "#a1a1a6" }}>Wait for analysis to complete</span></li>
-                <li><span style={{ color: "#0ea5a5" }}>4.</span> <span style={{ color: "#a1a1a6" }}>Review insights with AI</span></li>
+                <li style={{ marginBottom: "8px" }}>
+                  <span style={{ color: "#0ea5a5" }}>1.</span>{" "}
+                  <span style={{ color: "#a1a1a6" }}>Sign in with Google</span>
+                </li>
+                <li style={{ marginBottom: "8px" }}>
+                  <span style={{ color: "#0ea5a5" }}>2.</span>{" "}
+                  <span style={{ color: "#a1a1a6" }}>Upload your project as ZIP</span>
+                </li>
+                <li style={{ marginBottom: "8px" }}>
+                  <span style={{ color: "#0ea5a5" }}>3.</span>{" "}
+                  <span style={{ color: "#a1a1a6" }}>Wait for analysis to complete</span>
+                </li>
+                <li>
+                  <span style={{ color: "#0ea5a5" }}>4.</span>{" "}
+                  <span style={{ color: "#a1a1a6" }}>Review insights with AI</span>
+                </li>
               </ul>
             </div>
             <div>
-              <h3 style={{ margin: "0 0 12px 0", color: "#e4e4e7", fontSize: "14px", fontWeight: "600" }}>What You Get</h3>
+              <h3
+                style={{
+                  margin: "0 0 12px 0",
+                  color: "#e4e4e7",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                What You Get
+              </h3>
               <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>Project architecture analysis</li>
+                <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>
+                  Project architecture analysis
+                </li>
                 <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>Dependency mapping</li>
-                <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>AI-powered recommendations</li>
+                <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>
+                  AI-powered recommendations
+                </li>
                 <li style={{ color: "#a1a1a6" }}>Code quality insights</li>
               </ul>
             </div>
             <div>
-              <h3 style={{ margin: "0 0 12px 0", color: "#e4e4e7", fontSize: "14px", fontWeight: "600" }}>Requirements</h3>
+              <h3
+                style={{
+                  margin: "0 0 12px 0",
+                  color: "#e4e4e7",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                Requirements
+              </h3>
               <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
                 <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>ZIP file format only</li>
-                <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>Valid project structure</li>
-                <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>Google account required</li>
+                <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>
+                  Valid project structure
+                </li>
+                <li style={{ marginBottom: "8px", color: "#a1a1a6" }}>
+                  Google account required
+                </li>
                 <li style={{ color: "#a1a1a6" }}>Internet connection needed</li>
               </ul>
             </div>
           </div>
-          <div style={{ borderTop: "1px solid rgba(14, 165, 165, 0.1)", paddingTop: "24px", textAlign: "center" }}>
-            <p style={{ margin: 0, fontSize: "13px", color: "#71838b" }}>TraceIQ © {new Date().getFullYear()} — Powered by intelligent code analysis</p>
+          <div
+            style={{
+              borderTop: "1px solid rgba(14, 165, 165, 0.1)",
+              paddingTop: "24px",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "13px", color: "#71838b" }}>
+              TraceIQ © {new Date().getFullYear()} — Powered by intelligent code analysis
+            </p>
           </div>
         </div>
       </footer>
