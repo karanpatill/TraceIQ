@@ -22,39 +22,38 @@ function App() {
 
   // Google Login init
   useEffect(() => {
-    /* global google */
-    if (!window.google || !window.google.accounts?.id) {
-      console.warn("Google Identity script not loaded");
+  let attempts = 0;
+
+  const waitForGoogle = () => {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.initialize({
+        client_id: "379071280284-tt3ekucit1ikbr1jcs2u11v8jgljvk35.apps.googleusercontent.com",
+        callback: async (response) => {
+          try {
+            const res = await axios.post(`${API}/auth/google`, {
+              credential: response.credential,
+            });
+
+            localStorage.setItem("token", res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+
+            window.google.accounts.id.cancel();
+            setToken(res.data.token);
+            setUser(res.data.user);
+          } catch {
+            alert("Google login failed");
+          }
+        },
+      });
       return;
     }
 
-    window.google.accounts.id.initialize({
-      client_id:
-        "379071280284-tt3ekucit1ikbr1jcs2u11v8jgljvk35.apps.googleusercontent.com",
-      callback: async (response) => {
-        try {
-          const res = await axios.post(`${API}/auth/google`, {
-            credential: response.credential,
-          });
+    if (attempts++ < 50) setTimeout(waitForGoogle, 100);
+    else console.error("Google never loaded");
+  };
 
-          const { token, user } = res.data;
-
-          localStorage.setItem("token", token);
-          localStorage.setItem("user", JSON.stringify(user));
-          
-          // Cancel Google button before updating state
-          window.google.accounts.id.cancel();
-          
-          setToken(token);
-          setUser(user);
-          console.log("Logged in as:", user.email);
-        } catch (err) {
-          console.error("Google login failed:", err);
-          alert("Google login failed");
-        }
-      },
-    });
-  }, []);
+  waitForGoogle();
+}, []);
 
   // backend health check
   useEffect(() => {
